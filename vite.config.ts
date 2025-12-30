@@ -6,6 +6,7 @@ import typegpuPlugin from 'unplugin-typegpu/vite'
 
 export default defineConfig({
   plugins: [devtools(), solidPlugin(), tailwindcss(), typegpuPlugin({})],
+  base: './',
   server: {
     port: 3000,
   },
