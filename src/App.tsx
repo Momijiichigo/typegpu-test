@@ -12,8 +12,10 @@ const App: Component = () => {
   onMount(async () => {
     const ctx = canvas!.getContext('2d')!;
 
-    canvas!.width = window.innerWidth;
-    canvas!.height = window.innerHeight;
+    canvas!.width = window.innerWidth * window.devicePixelRatio;
+    canvas!.height = window.innerHeight * window.devicePixelRatio;
+    canvas!.style.width = `${window.innerWidth}px`;
+    canvas!.style.height = `${window.innerHeight}px`;
 
     const _minSide = Math.min(canvas!.width, canvas!.height)
 
@@ -33,8 +35,10 @@ const App: Component = () => {
     const renderSize = root.createMutable(d.vec2f, d.vec2f(canvas!.width / LENGTH_SCALE, canvas!.height / LENGTH_SCALE))
 
     window.addEventListener('resize', () => {
-      canvas!.width = window.innerWidth;
-      canvas!.height = window.innerHeight;
+      canvas!.width = window.innerWidth * window.devicePixelRatio;
+      canvas!.height = window.innerHeight * window.devicePixelRatio;
+      canvas!.style.width = `${window.innerWidth}px`;
+      canvas!.style.height = `${window.innerHeight}px`;
       ctx.font = `${charRadius * 1.25/0.02}em serif`;
       renderSize.write(d.vec2f(canvas!.width / LENGTH_SCALE, canvas!.height / LENGTH_SCALE))
     });
