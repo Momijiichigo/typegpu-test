@@ -1,28 +1,46 @@
-import {onMount, type Component} from 'solid-js';
+import {createEffect, createSignal, onMount, type Component} from 'solid-js';
 import tgpu from 'typegpu';
 import * as d from 'typegpu/data';
 import * as std from 'typegpu/std';
 
 const App: Component = () => {
-  let canvas: HTMLCanvasElement;
+  let canvas: HTMLCanvasElement | undefined;
+
+  // Update width and height on window resize
+
+  
   onMount(async () => {
     const ctx = canvas!.getContext('2d')!;
-    canvas!.width = 1000;
-    canvas!.height = 900;
 
+    canvas!.width = window.innerWidth;
+    canvas!.height = window.innerHeight;
 
+    const _minSide = Math.min(canvas!.width, canvas!.height)
 
     const charSigns = ['✊️', '✌️', '🖐️']
     // const charSigns = ['🟢', '🔶', '💙']
 
-    const charRadius = 0.02
+    const charRadius = 0.02 / 1000 * (canvas!.width + canvas!.height) / 2
     ctx.font = `${charRadius * 1.25/0.02}em serif`;
     const PARTICLE_NUM = 500
+
+    const LENGTH_SCALE = 1000
     const ATTRACTION_CONST = 0.0000004 / 0.03 * charRadius
     const MAX_VELOCITY = 0.002 / 0.03 * charRadius
 
     const root = await tgpu.init()
 
+    const renderSize = root.createMutable(d.vec2f, d.vec2f(canvas!.width / LENGTH_SCALE, canvas!.height / LENGTH_SCALE))
+
+    window.addEventListener('resize', () => {
+      canvas!.width = window.innerWidth;
+      canvas!.height = window.innerHeight;
+      ctx.font = `${charRadius * 1.25/0.02}em serif`;
+      renderSize.write(d.vec2f(canvas!.width / LENGTH_SCALE, canvas!.height / LENGTH_SCALE))
+    });
+    // createEffect(() => {
+    //   renderSize.write(d.vec2f(canvas!.width, canvas!.height))
+    // })
 
     const ParticleData = d.struct({
       position: d.vec2f,
@@ -32,25 +50,27 @@ const App: Component = () => {
 
     const particleBuffers = [0, 1].map(() => root.createBuffer(d.arrayOf(ParticleData, PARTICLE_NUM)).$usage('storage'))
 
+
+
     const initialPositions = [
       {
-        x: 0.2,
-        y: 0.6,
-        radius: 0.2,
+        x: 0.2 * canvas!.width / LENGTH_SCALE,
+        y: 0.6 * canvas!.height / LENGTH_SCALE,
+        radius: 0.2 * _minSide / LENGTH_SCALE,
         num: (PARTICLE_NUM / 3) | 0,
         sign: 0
       },
       {
-        x: 0.8,
-        y: 0.65,
-        radius: 0.2,
+        x: 0.8 * canvas!.width / LENGTH_SCALE,
+        y: 0.65 * canvas!.height / LENGTH_SCALE,
+        radius: 0.2 * _minSide / LENGTH_SCALE,
         num: (PARTICLE_NUM / 3) | 0,
         sign: 1
       },
       {
-        x: 0.5,
-        y: 0.25,
-        radius: 0.2,
+        x: 0.5 * canvas!.width / LENGTH_SCALE,
+        y: 0.25 * canvas!.height / LENGTH_SCALE,
+        radius: 0.2 * _minSide / LENGTH_SCALE,
         num: PARTICLE_NUM - (PARTICLE_NUM / 3) | 0,
         sign: 2
       },
@@ -134,15 +154,15 @@ const App: Component = () => {
         const shifts = [
           d.vec2f(0.0, 0.0),
 
-          d.vec2f(1.0, 0.0),
-          d.vec2f(-1.0, 0.0),
-          d.vec2f(0.0, 1.0),
-          d.vec2f(0.0, -1.0),
+          d.vec2f(renderSize.$.x, 0.0),
+          d.vec2f(-renderSize.$.x, 0.0),
+          d.vec2f(0.0, renderSize.$.y),
+          d.vec2f(0.0, -renderSize.$.y),
 
-          // d.vec2f(1.0, 1.0),
-          // d.vec2f(-1.0, 1.0),
-          // d.vec2f(1.0, -1.0),
-          // d.vec2f(-1.0, -1.0),
+          d.vec2f(renderSize.$.x, renderSize.$.y),
+          d.vec2f(-renderSize.$.x, -renderSize.$.y),
+          d.vec2f(-renderSize.$.x, renderSize.$.y),
+          d.vec2f(renderSize.$.x, -renderSize.$.y),
         ]
         let strength = d.vec2f();
         for (let i = 0; i < shifts.length; i++) {
@@ -168,8 +188,8 @@ const App: Component = () => {
         instanceInfo.velocity = d.vec2f(resultVel)
 
       }
-      instanceInfo.position.x = (instanceInfo.position.x + 1.0) % 1.0
-      instanceInfo.position.y = (instanceInfo.position.y + 1.0) % 1.0
+      instanceInfo.position.x = (instanceInfo.position.x + renderSize.$.x) % renderSize.$.x
+      instanceInfo.position.y = (instanceInfo.position.y + renderSize.$.y) % renderSize.$.y
       // if ((instanceInfo.position.x < 0.0 && instanceInfo.velocity.x < 0.0) || (instanceInfo.position.x > 1.0 && instanceInfo.velocity.x > 0.0)) {
       //   instanceInfo.velocity.x *= -1.0
       // }
@@ -211,7 +231,7 @@ const App: Component = () => {
         ctx.clearRect(0, 0, canvas!.width, canvas!.height)
         for (const particleInfo of value) {
           const {position: {x, y}, sign} = particleInfo
-          ctx.strokeText(charSigns[sign], x * canvas!.width, y * canvas!.height)
+          ctx.strokeText(charSigns[sign], x * LENGTH_SCALE, y * LENGTH_SCALE)
         }
       })
       simulatePipeline.with(computeBindGroups[even ? 0 : 1]).dispatchThreads(PARTICLE_NUM)
@@ -230,7 +250,7 @@ const App: Component = () => {
   let container: HTMLDivElement;
   return (
     <div ref={container!} class="w-screen h-screen flex justify-center items-center bg-white">
-      <canvas ref={canvas!} class="border border-black bg-black"></canvas>
+      <canvas ref={canvas!} class="border-0 border-black bg-black"></canvas>
 
 
 
