@@ -15,9 +15,11 @@ const App: Component = () => {
     const charSigns = ['✊️', '✌️', '🖐️']
     // const charSigns = ['🟢', '🔶', '💙']
 
-    const charRadius = 0.03
+    const charRadius = 0.02
     ctx.font = `${charRadius * 1.25/0.02}em serif`;
-    const PARTICLE_NUM = 60
+    const PARTICLE_NUM = 500
+    const ATTRACTION_CONST = 0.0000004 / 0.03 * charRadius
+    const MAX_VELOCITY = 0.002 / 0.03 * charRadius
 
     const root = await tgpu.init()
 
@@ -34,21 +36,21 @@ const App: Component = () => {
       {
         x: 0.2,
         y: 0.6,
-        dev: 0.25,
+        radius: 0.2,
         num: (PARTICLE_NUM / 3) | 0,
         sign: 0
       },
       {
         x: 0.8,
-        y: 0.6,
-        dev: 0.25,
+        y: 0.65,
+        radius: 0.2,
         num: (PARTICLE_NUM / 3) | 0,
         sign: 1
       },
       {
         x: 0.5,
-        y: 0.2,
-        dev: 0.25,
+        y: 0.25,
+        radius: 0.2,
         num: PARTICLE_NUM - (PARTICLE_NUM / 3) | 0,
         sign: 2
       },
@@ -64,10 +66,12 @@ const App: Component = () => {
 
       for (const group of initialPositions) {
         for (let i = 0; i < group.num; i++) {
+          const angle = Math.random() * Math.PI * 2
+          const radius = Math.random() * group.radius
           pointData.push({
             position: d.vec2f(
-              group.x + Math.random() * group.dev - group.dev / 2,
-              group.y + Math.random() * group.dev - group.dev / 2,
+              group.x + Math.cos(angle) * radius,
+              group.y + Math.sin(angle) * radius
             ),
             velocity: d.vec2f(Math.random() * 0.001 - 0.0005, Math.random() * 0.001 - 0.0005),
             sign: group.sign
@@ -126,7 +130,7 @@ const App: Component = () => {
           continue
         }
 
-        const attraction = 0.0000004 * d.f32(attrOrder)
+        const attraction = ATTRACTION_CONST * d.f32(attrOrder)
         const shifts = [
           d.vec2f(0.0, 0.0),
 
@@ -157,8 +161,8 @@ const App: Component = () => {
 
       const resultVel = std.add(instanceInfo.velocity, dVel)
 
-      if (std.length(resultVel) > 0.002) {
-        instanceInfo.velocity = std.mul(resultVel, 0.002 / std.length(resultVel))
+      if (std.length(resultVel) > MAX_VELOCITY) {
+        instanceInfo.velocity = std.mul(resultVel, MAX_VELOCITY / std.length(resultVel))
       } else {
 
         instanceInfo.velocity = d.vec2f(resultVel)
